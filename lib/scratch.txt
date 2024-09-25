@@ -1,0 +1,448 @@
+emaill Sendgrid API = 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
+
+import 'dart:convert';
+import 'package:Peetie/sheetscolumn.dart';
+import 'package:Peetie/signup.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:email_auth/email_auth.dart';
+import 'googlesheets.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_timer_countdown/flutter_timer_countdown.dart';
+import 'homepage.dart';
+import 'inputbox.dart';
+
+class SendGridAPI {
+  final String apiKey = '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';
+
+  Future<bool> sendEmail({required String toEmail, required String otp,}) async {
+    final url = Uri.parse('https://api.sendgrid.com/v3/mail/send');
+    final headers = {
+      'Authorization': 'Bearer $apiKey',
+      'Content-Type': 'application/json',
+    };
+
+    final body = jsonEncode({
+      "personalizations": [{
+          "To": [{"email": toEmail}],
+          "Subject": "Account Verification"
+        }],
+      "From": {"email": "daothihaan@gmail.com"},
+      "content": [{
+          "type": "text/plain",
+          "value": "Thank you for being our member.\nYour OTP code is: $otp\n\nNote: OTP is valid for 5 minutes.\n\nRegards,\nDancesmart's team"
+        }]
+    });
+
+    final response = await http.post(url, headers: headers, body: body);
+    if (response.statusCode == 202) {
+      if (kDebugMode) {
+        print('Send email successfully!');
+        return true;
+      }
+    } else {
+      if (kDebugMode) {
+        print('Unsuccessfully send email: ${response.body}');
+        return false;
+      }
+    }
+    return false;
+  }
+}
+
+class OTPverify extends StatefulWidget {
+  final String email;
+  final String name;
+  final String password;
+
+  const OTPverify({Key? key, required this.email, required this.name, required this.password}) : super(key: key);
+
+  @override
+  State<OTPverify> createState() => _OTPverifyState();
+}
+
+class _OTPverifyState extends State<OTPverify> {
+  late EmailAuth emailAuth;
+  final List<TextEditingController> _digitControllers =
+        List.generate(4, (index) => TextEditingController()); // Controllers for each digit input box
+  bool _isLoading = false;
+  String _createOTP = '';
+  DateTime? _otpExpiryTime;
+  // Create keys for each OTPBox here
+  final List<GlobalKey<FormState>> _otpBoxKeys = List.generate(4, (index) => GlobalKey<FormState>());
+  //final GlobalKey<TimerCountdown> _timerKey = GlobalKey<TimerCountdownState>();
+
+  @override
+  void initState() {
+    super.initState();
+    setState(() {_otpExpiryTime = null;});
+    _sendOTP();
+  }
+
+  void _showValidationDialog(BuildContext context, String mess, {String title = 'WARNING!'}) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: SingleChildScrollView(
+              child: Text(mess)),
+          contentPadding: const EdgeInsets.all(20.0),
+          actions: [
+            ElevatedButton(
+              onPressed: () {Navigator.of(context).pop();},  // Close the dialog
+              child: const Text(
+                "OK",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<bool> _verifyOTP() async {
+    if (!mounted) return false;
+    setState(() {_isLoading = true;});
+
+    // Get OTP digits from each controller
+    String enteredOTP = _digitControllers.map((controller) => controller.text).join('');
+
+    setState(() {_isLoading = false;});
+
+    if (enteredOTP.length != 4) {
+      _showValidationDialog(context, 'Please enter the complete 4-digit OTP.');
+      return false;
+    }
+
+    if (_otpExpiryTime == null) {
+      _showValidationDialog(context, 'OTP is expired!\nPlease resend code.');
+      return false;
+    }
+
+    if (_createOTP == enteredOTP) {
+      _insertToSheet();
+      return true;
+    }
+
+    _showValidationDialog(context, 'Incorrect OTP!\nPlease enter again.');
+    return false;
+  }
+
+  String _generateOtp() {
+    return (1000 + (9999 - 1000) * (DateTime.now().microsecond / 1000000)).toInt().toString();
+  }
+
+  Future<void> _sendOTP() async {
+    setState(() {
+      _isLoading = true;
+      _otpExpiryTime = null;
+      _createOTP = _generateOtp();
+    });
+
+    bool result = await SendGridAPI().sendEmail(toEmail: widget.email, otp: _createOTP);
+
+    setState(() {_isLoading = false;});
+
+    if (!result) {
+      if (!mounted) return;
+      _showValidationDialog(context, 'Failed to send OTP to your email.\nPlease try again.');
+    }
+    else {
+      if (!mounted) return;
+      _showValidationDialog(context, 'Send OTP to your email successfully!', title: ':)');
+      if (kDebugMode) {
+        print('Current _otpExpiryTime: $_otpExpiryTime');
+      }
+      setState(() {
+        _otpExpiryTime = DateTime.now().add(const Duration(minutes: 5));  // OTP valid for 5 minutes
+      });
+      if (kDebugMode) {
+        print('New _otpExpiryTime: $_otpExpiryTime');
+      }
+    }
+  }
+
+  Future<void> _insertToSheet() async {   // Insert Data into Google Sheet:
+    try {
+      final user = User(name: widget.name, gmail: widget.email, pssw: widget.password);
+      await SheetsAPI.insert([user.toJson()]);
+
+      if (kDebugMode) {
+        print("Data inserted successfully!");
+        print("Name: ${widget.name}");
+        print("Email: ${widget.email}");
+        print("Password: ${widget.password}");
+      }
+
+      if (!mounted) return;
+      Navigator.pushReplacement(  //prevent going back to OTP screen
+          context, MaterialPageRoute(builder: (context) => const HomePage()));
+    }
+    catch (e) {
+      if (kDebugMode) {
+        print("Error inserting data: $e");
+      }
+      _showValidationDialog(context, 'Register unsuccessfully :(\nPlease try again.');
+    }
+    finally {
+      setState(() {_isLoading = false;});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            Container(
+              alignment: Alignment.center,
+              height: MediaQuery.of(context).size.height,
+              color: const Color(0xffbf592b),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 5.0),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const SignUpHome()));
+                          },
+                          child: const Image(
+                            image: AssetImage('assets/images/white_left_arrow.png'),
+                            filterQuality: FilterQuality.high,
+                            width: 60,
+                          ),
+                        ),
+                      ),
+
+                      const Image(
+                        image: AssetImage('assets/images/paw.png'),
+                        filterQuality: FilterQuality.high,
+                        width: 60,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Account',
+                        style: TextStyle(
+                          fontFamily: 'Poppins ExtraBold',
+                          fontSize: 24,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900
+                        ),
+                      ),
+                      SizedBox(width: 20,),
+                      RotationTransition(
+                        turns: AlwaysStoppedAnimation(45 / 360),
+                        child: Image(
+                          image: AssetImage('assets/images/paw2.png'),
+                          filterQuality: FilterQuality.high,
+                          width: 50,
+                        ),
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Verification',
+                        style: TextStyle(
+                            fontFamily: 'Poppins ExtraBold',
+                            fontSize: 24,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
+
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Check your email inbox.\nThen, please enter the 4-digit code sent to your email.',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Colors.white,
+                        ),
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 30),
+
+                  TimerCountdown(
+                    enableDescriptions: false,
+                    format: CountDownTimerFormat.minutesSeconds,
+                    timeTextStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white
+                    ),
+                    colonsTextStyle: const TextStyle(
+                        color: Colors.white
+                    ),
+                    endTime: _otpExpiryTime ?? DateTime.now(),
+                    onEnd: () async {
+                      if (!mounted) return;
+                      if (kDebugMode) {
+                        print("Timer finished");
+                      }
+                      WidgetsBinding.instance.addPostFrameCallback((_) {    // ensures that the navigation happens after the current frame is fully rendered.
+                        if (mounted) {
+                          if (kDebugMode) {
+                            print("Expiration notification in Timer");
+                          }
+                          _showValidationDialog(context, 'OTP is expired!\nPlease resend code.');
+                          setState(() {
+                            _createOTP = '';
+                            _otpExpiryTime = null;
+                          });
+                        }
+                      });
+                      },
+                  ),
+                  const SizedBox(height: 20),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      OTPBox(
+                        key: _otpBoxKeys[0],
+                        textController: _digitControllers[0],
+                      ),
+                      const SizedBox(width: 7),
+
+                      OTPBox(
+                        key: _otpBoxKeys[1],
+                        textController: _digitControllers[1],
+                      ),
+                      const SizedBox(width: 7),
+
+                      OTPBox(
+                        key: _otpBoxKeys[2],
+                        textController: _digitControllers[2],
+                      ),
+                      const SizedBox(width: 7),
+
+                      OTPBox(
+                        key: _otpBoxKeys[3],
+                        textController: _digitControllers[3],
+                      ),
+                    ]
+                  ),
+                  const SizedBox(height: 30),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          _sendOTP();
+                        },
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: Container(
+                            padding: const EdgeInsets.only(bottom: 2.5),
+                            decoration: const BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: Colors.white,
+                                  width: 1.5
+                                )
+                              )
+                            ),
+                            child: const Text(
+                              'Resend Code',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 30),
+
+                  SizedBox(
+                    width: 100,
+                    height: 35,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: const Color(0xffbf592b),
+                        side: const BorderSide(color: Colors.white, width: 2.0),
+                        padding: const EdgeInsets.symmetric(),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
+                      ),
+                      onPressed: () async {
+                        if (await _verifyOTP()) {
+                          if (!context.mounted) return;
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const HomePage())); // go to OTP verification step
+                        }
+                      },
+                      child: const Text(
+                        'Verify',
+                        style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+           if (_isLoading)
+              Container(
+                  height: MediaQuery.sizeOf(context).height,
+                  color: Colors.black.withOpacity(0.5),
+                  child: const Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 5.0,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.lightBlueAccent),
+                      )
+                  )
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    for (var controller in _digitControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+}
+
