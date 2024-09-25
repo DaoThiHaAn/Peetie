@@ -1,2 +1,2 @@
 # Peetie
-A flutter app for finding new home fotr pets
+A flutter app for finding new home for pets
