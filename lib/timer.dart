@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 
 enum CountDownTimerFormat {
@@ -318,8 +319,9 @@ class _TimerCountdownState extends State<TimerCountdown> {
         widget.format == CountDownTimerFormat.hoursMinutes ||
         widget.format == CountDownTimerFormat.hoursOnly) {
       return _twoDigits(duration.inHours, "hours");
-    } else
+    } else {
       return _twoDigits(duration.inHours.remainder(24), "hours").toString();
+    }
   }
 
   /// Convert [Duration] in minutes to String for UI.
@@ -327,16 +329,18 @@ class _TimerCountdownState extends State<TimerCountdown> {
     if (widget.format == CountDownTimerFormat.minutesSeconds ||
         widget.format == CountDownTimerFormat.minutesOnly) {
       return _twoDigits(duration.inMinutes, "minutes");
-    } else
+    } else {
       return _twoDigits(duration.inMinutes.remainder(60), "minutes");
+    }
   }
 
   /// Convert [Duration] in seconds to String for UI.
   String _durationToStringSeconds(Duration duration) {
     if (widget.format == CountDownTimerFormat.secondsOnly) {
       return _twoDigits(duration.inSeconds, "seconds");
-    } else
+    } else {
       return _twoDigits(duration.inSeconds.remainder(60), "seconds");
+    }
   }
 
   /// Switches the UI to be displayed based on [CountDownTimerFormat].

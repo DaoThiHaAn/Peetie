@@ -1,13 +1,15 @@
 import 'dart:convert';
 import 'dart:math';
+
 import 'package:Peetie/sheetscolumn.dart';
 import 'package:Peetie/signup.dart';
+import 'package:Peetie/timer.dart';
+import 'package:email_auth/email_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:email_auth/email_auth.dart';
-import 'googlesheets.dart';
 import 'package:http/http.dart' as http;
-import 'package:Peetie/timer.dart';
+
+import 'googlesheets.dart';
 import 'homepage.dart';
 import 'inputbox.dart';
 
@@ -34,16 +36,21 @@ class SendGridAPI {
     });
 
     final response = await http.post(url, headers: headers, body: body);
-    if (response.statusCode == 202) {
+
+    if (kDebugMode) {
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+    }
+
+    if (response.statusCode >= 200 && response.statusCode <= 299) {
       if (kDebugMode) {
         print('Send email successfully!');
-        return true;
       }
-    } else {
-      if (kDebugMode) {
-        print('Unsuccessfully send email: ${response.body}');
-        return false;
-      }
+      return true;
+    }
+
+    if (kDebugMode) {
+      print('Unsuccessfully send email: ${response.body}');
     }
     return false;
   }
@@ -149,13 +156,15 @@ class _OTPverifyState extends State<OTPverify> {
     bool result = await SendGridAPI().sendEmail(toEmail: widget.email, otp: otp);
 
     if (result) {
+      if (!mounted) return false;  // Ensure widget is still mounted before setting state
       setState(() {
-        _showValidationDialog(context, 'Send OTP to your email successfully!', title: ':)');
         _createOTP = otp;
         _timerKey = UniqueKey();
-        _otpExpiryTime = DateTime.now().add(const Duration(minutes: 5));  // OTP valid for 5 minutes
+        _otpExpiryTime = DateTime.now().add(
+            const Duration(minutes: 5)); // OTP valid for 5 minutes
       });
       _clearOTPFields();
+      _showValidationDialog(context, 'Send OTP to your email successfully!', title: ':)');
       return true;
     }
     else {
@@ -211,10 +220,14 @@ class _OTPverifyState extends State<OTPverify> {
             return const Center(
                 child: CircularProgressIndicator()); // Show loading while waiting
           }
-          else if (snapshot.hasError || !snapshot.hasData || snapshot.data == false) {
-            return const Center(
-                child: Text('ERROR')
-            );
+          else if (snapshot.hasError) {
+            return const Center(child: Text('SNAPSHOT HAS ERROR!'));
+          }
+          else if (!snapshot.hasData) {
+            return const Center(child: Text('SNAPSHOT DOES NOT HAVE DATA!'));
+          }
+          else if (snapshot.data == false) {
+            return const Center(child: Text('SNAPSHOT\'S LATEST DATA IS FALSE!'));
           }
           else {
               return ListView(
@@ -299,7 +312,7 @@ class _OTPverifyState extends State<OTPverify> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              'Check your email inbox.\nThen, please enter the 4-digit code sent to your email.',
+                              'Check your email inbox.\nThen, please enter the 4-digit code\nsent to your email.',
                               style: TextStyle(
                                 fontSize: 15,
                                 color: Colors.white,

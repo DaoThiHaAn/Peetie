@@ -27,6 +27,8 @@ class _InputBoxState extends State<InputBox> {
         child: Padding(
           padding: const EdgeInsets.only(top: 10.0, bottom: 10, left: 5), // Add padding around the input box
           child: TextField(
+            scrollPadding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom),
             obscureText: _psswVisibility,
             controller: widget.textController,
             style: const TextStyle(color: Color(0xff752805)),

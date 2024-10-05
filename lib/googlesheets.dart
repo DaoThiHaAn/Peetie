@@ -2,8 +2,8 @@ import 'package:Peetie/sheetscolumn.dart';
 import 'package:gsheets/gsheets.dart';
 
 class SheetsAPI {
-  static String _sheetID = '1f1HessDNZHXGWmdiIbicyoFX1LcuSUvGc3MBTwo5qPM';
-  static String _credentials = r'''
+  static const String _sheetID = '1f1HessDNZHXGWmdiIbicyoFX1LcuSUvGc3MBTwo5qPM';
+  static const String _credentials = r'''
   {
   "type": "service_account",
   "project_id": "dancesmart-petapp",
