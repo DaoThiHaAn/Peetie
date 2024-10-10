@@ -1,11 +1,11 @@
+import 'package:Peetie/forgot_pssw.dart';
 import 'package:Peetie/signup.dart';
-import 'package:animated_text_kit/animated_text_kit.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+
+import 'general_func.dart';
 import 'googlesheets.dart';
 import 'homepage.dart';
 import 'inputbox.dart';
-import 'main.dart';
+import 'libraries.dart';
 
 class SignInPage extends StatefulWidget {
   const SignInPage({Key? key}) : super(key: key);
@@ -15,7 +15,6 @@ class SignInPage extends StatefulWidget {
 }
 
 class _SignInPage extends State<SignInPage> {
-  bool _isTapped = false;
   bool _isLoading = false;
   late TextEditingController _mailController;
   late TextEditingController _psswController;
@@ -30,31 +29,6 @@ class _SignInPage extends State<SignInPage> {
     _psswController = TextEditingController();
   }
 
-  void _showValidationDialog(BuildContext context, List<String> messages) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text(
-            "INVALID!",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: SingleChildScrollView(
-              child: Text(messages.join('\n\n'), textAlign: TextAlign.justify)),
-          contentPadding: const EdgeInsets.all(20.0),
-          actions: [
-            ElevatedButton(
-              onPressed: () {Navigator.of(context).pop();},  // Close the dialog
-              child: const Text(
-                "OK",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   Future<bool> _checkInput() async {
     if (!mounted) return false;
@@ -96,7 +70,7 @@ class _SignInPage extends State<SignInPage> {
       setState(() {
         _isLoading = false; // Hide loading indicator
       });
-      _showValidationDialog(context, mess);
+      showValidationDialog(context, 'INVALID!', mess);
       return false;
     }
 
@@ -126,7 +100,7 @@ class _SignInPage extends State<SignInPage> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Padding(
-                                padding: const EdgeInsets.only(left: 5.0),
+                                padding: const EdgeInsets.only(left: 10.0),
                                 child: GestureDetector(
                                   onTap: () {
                                     Navigator.push(
@@ -239,7 +213,7 @@ class _SignInPage extends State<SignInPage> {
                           const SizedBox(height: 10.0),
                           const Row(
                             children: <Widget>[
-                              Text('Email', style: MyApp.customTextStyle),
+                              Text('Email', style: inputLabelStyle),
                             ],
                           ),
                           InputBox(
@@ -250,7 +224,7 @@ class _SignInPage extends State<SignInPage> {
 
                           const Row(
                             children: <Widget>[
-                              Text('Password', style: MyApp.customTextStyle),
+                              Text('Password', style: inputLabelStyle),
                             ],
                           ),
                           InputBox(
@@ -264,14 +238,7 @@ class _SignInPage extends State<SignInPage> {
                             width: 100,
                             height: 35,
                             child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                backgroundColor: const Color(0xffbf592b),
-                                side: const BorderSide(color: Colors.white, width: 2.0),
-                                padding: const EdgeInsets.symmetric(),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30.0),
-                                ),
-                              ),
+                              style: bottomButtonStyle,
                               onPressed: ()  async {
                                 if (await _checkInput()) {
                                   if (!context.mounted) return;
@@ -281,11 +248,8 @@ class _SignInPage extends State<SignInPage> {
                                 }
                               },
                               child: const Text(
-                                'Sign in',
-                                style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold),
+                                'Sign In',
+                                style: buttonLabelStyle
                               ),
                             ),
                           ),
@@ -296,11 +260,10 @@ class _SignInPage extends State<SignInPage> {
                             children: <Widget>[
                               GestureDetector(
                                 onTap: () {
-                                  _isTapped = true;
                                   Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                          builder: (context) => const HomePage()));
+                                          builder: (context) => const EmailVerify()));
                                 },
                                 child: MouseRegion(
                                   cursor: SystemMouseCursors.click,
@@ -309,8 +272,7 @@ class _SignInPage extends State<SignInPage> {
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w800,
-                                      color:
-                                      _isTapped ? Colors.yellow[700] : Colors.white,
+                                      color: Colors.yellow[700],
                                     ),
                                   ),
                                 ),
@@ -323,16 +285,7 @@ class _SignInPage extends State<SignInPage> {
                   ],
                 ),
                 if (_isLoading)
-                  Container(
-                      height: MediaQuery.sizeOf(context).height,
-                      color: Colors.black.withOpacity(0.5),
-                      child: const Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 5.0,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.lightBlueAccent),
-                          )
-                      )
-                  )
+                  const LoadingScreen()
               ],
             ),
           ],

@@ -1,5 +1,4 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'libraries.dart';
 
 class InputBox extends StatefulWidget{
   final String hintTexts;

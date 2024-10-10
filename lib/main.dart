@@ -1,6 +1,6 @@
+import 'package:Peetie/googlesheets.dart';
 import 'package:Peetie/signup.dart';
 import 'package:flutter/material.dart';
-import 'package:Peetie/googlesheets.dart';
 //import 'package:flutter/rendering.dart';
 //import 'package:firebase_core/firebase_core.dart';
 //import 'package:firebase_auth/firebase_auth.dart';
@@ -15,12 +15,6 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
-  // Define a custom TextStyle
-  static const TextStyle customTextStyle = TextStyle(
-    fontSize: 15,
-    color: Colors.white,
-  );
-
   const MyApp({Key? key}) : super(key: key);
 
   @override

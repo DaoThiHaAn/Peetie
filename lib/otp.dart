@@ -1,39 +1,78 @@
-import 'dart:convert';
-import 'dart:math';
-
+import 'package:Peetie/forgot_pssw.dart';
 import 'package:Peetie/sheetscolumn.dart';
 import 'package:Peetie/signup.dart';
 import 'package:Peetie/timer.dart';
-import 'package:email_auth/email_auth.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import 'general_func.dart';
 import 'googlesheets.dart';
 import 'homepage.dart';
 import 'inputbox.dart';
+import 'libraries.dart';
 
 class SendGridAPI {
   final String apiKey = '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';
 
-  Future<bool> sendEmail({required String toEmail, required String otp,}) async {
+  Future<bool> sendEmail({required String toEmail, required String otp, required bool isReset}) async {
     final url = Uri.parse('https://api.sendgrid.com/v3/mail/send');
     final headers = {
       'Authorization': 'Bearer $apiKey',
       'Content-Type': 'application/json',
     };
 
-    final body = jsonEncode({
-      "personalizations": [{
-          "To": [{"email": toEmail}],
-          "Subject": "Account Verification"
+    var body = isReset?
+        jsonEncode({
+          "personalizations": [{
+            "To": [{"email": toEmail}],
+            "Subject": "Account Verification"
+          }
+          ],
+          "From": {"email": "daothihaan@gmail.com"},
+          "content": [{
+            "type": "text/html",
+            "value": """
+            <html lang='en'>
+            <body>
+              <p style='font-size:14px;'>Dear User,</p>
+              <h3>Verify your account to reset your password.</h3>
+              <p>
+                Your OTP code is:   <span style='color:red; font-size: 18px'>$otp</span>
+               </p>
+              <p><i>Note: OTP is valid for 5 minutes.</i></p>
+              <br>
+              <p>Regards,</p>
+              <p>Dancesmart's team</p>
+            </body>
+          </html>
+          """
+          }
+          ]
+        }) :
+        jsonEncode({
+          "personalizations": [{
+            "To": [{"email": toEmail}],
+            "Subject": "Account Verification"
         }],
-      "From": {"email": "daothihaan@gmail.com"},
-      "content": [{
-          "type": "text/plain",
-          "value": "Thank you for being our member.\nYour OTP code is: $otp\n\nNote: OTP is valid for 5 minutes.\n\nRegards,\nDancesmart's team"
+          "From": {"email": "daothihaan@gmail.com"},
+          "content": [{
+            "type": "text/html",
+            "value": """
+              <html lang='en'>
+              <body>
+                <h2>Welcome to Peetie!</h2>
+                <p>Thank you for being our member</p>
+                <p>
+                  Your OTP code is:   <span style='color:red; font-size: 18px'>$otp</span>
+                 </p>
+                <p><i>Note: OTP is valid for 5 minutes.</i></p>
+                <br>
+                <p>Regards,</p>
+                <p>Dancesmart's team</p>
+              </body>
+            </html>
+            """
         }]
-    });
+      });
 
     final response = await http.post(url, headers: headers, body: body);
 
@@ -58,10 +97,11 @@ class SendGridAPI {
 
 class OTPverify extends StatefulWidget {
   final String email;
-  final String name;
-  final String password;
+  final String? name;
+  final String? password;
+  final bool isResetPssw;
 
-  const OTPverify({Key? key, required this.email, required this.name, required this.password}) : super(key: key);
+  const OTPverify({Key? key, required this.email, required this.name, required this.password, required this.isResetPssw}) : super(key: key);
 
   @override
   State<OTPverify> createState() => _OTPverifyState();
@@ -89,32 +129,6 @@ class _OTPverifyState extends State<OTPverify> {
     });
   }
 
-  void _showValidationDialog(BuildContext context, String mess, {String title = 'WARNING!'}) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: SingleChildScrollView(
-              child: Text(mess)),
-          contentPadding: const EdgeInsets.all(20.0),
-          actions: [
-            ElevatedButton(
-              onPressed: () {Navigator.of(context).pop();},  // Close the dialog
-              child: const Text(
-                "OK",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Future<bool> _verifyOTP() async {
     if (!mounted) return false;
     setState(() {_isLoading = true;});
@@ -125,21 +139,23 @@ class _OTPverifyState extends State<OTPverify> {
     setState(() {_isLoading = false;});
 
     if (enteredOTP.length != 4) {
-      _showValidationDialog(context, 'Please enter the complete 4-digit OTP.');
+      showValidationDialog(context, 'WARNING!', ['Please enter the complete 4-digit OTP.']);
       return false;
     }
 
     if (_otpExpiryTime == null) {
-      _showValidationDialog(context, 'OTP is expired!\nPlease resend code.');
+      showValidationDialog(context, 'WARNING!', ['OTP is expired!\nPlease resend code.']);
       return false;
     }
 
     if (_createOTP == enteredOTP) {
-      _insertToSheet();
+      if (!widget.isResetPssw) {
+        _insertToSheet();
+      }
       return true;
     }
 
-    _showValidationDialog(context, 'Incorrect OTP!\nPlease enter again.');
+    showValidationDialog(context, 'WARNING!', ['Incorrect OTP!\nPlease enter again.']);
     return false;
   }
 
@@ -153,7 +169,7 @@ class _OTPverifyState extends State<OTPverify> {
 
   Future<bool> _sendOTP() async {
     String otp = _generateOtp();  // Generate OTP
-    bool result = await SendGridAPI().sendEmail(toEmail: widget.email, otp: otp);
+    bool result = await SendGridAPI().sendEmail(toEmail: widget.email, otp: otp, isReset: widget.isResetPssw);
 
     if (result) {
       if (!mounted) return false;  // Ensure widget is still mounted before setting state
@@ -164,12 +180,12 @@ class _OTPverifyState extends State<OTPverify> {
             const Duration(minutes: 5)); // OTP valid for 5 minutes
       });
       _clearOTPFields();
-      _showValidationDialog(context, 'Send OTP to your email successfully!', title: ':)');
+      showValidationDialog(context, ':)', ['Send OTP to your email successfully!']);
       return true;
     }
     else {
       if (mounted) {
-        _showValidationDialog(context, 'Failed to send OTP to your email.\nPlease try again.');
+        showValidationDialog(context, 'WARNING!', ['Failed to send OTP to your email.\nPlease try again.']);
       }
       return false;
     }
@@ -177,6 +193,7 @@ class _OTPverifyState extends State<OTPverify> {
 
   Future<void> _insertToSheet() async {   // Insert Data into Google Sheet:
     try {
+      setState(() {_isLoading = true;});
       final user = User(name: widget.name, gmail: widget.email, pssw: widget.password);
       await SheetsAPI.insert([user.toJson()]);
 
@@ -189,18 +206,21 @@ class _OTPverifyState extends State<OTPverify> {
 
       if (!mounted) return;
       Navigator.pushReplacement(  //prevent going back to OTP screen
-          context, MaterialPageRoute(builder: (context) => const HomePage()));
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage())
+      );
     }
     catch (e) {
       if (kDebugMode) {
         print("Error inserting data: $e");
       }
-      _showValidationDialog(context, 'Register unsuccessfully :(\nPlease try again.');
+      showValidationDialog(context, 'WARNING!', ['Register unsuccessfully :(\nPlease try again.']);
     }
     finally {
       setState(() {_isLoading = false;});
     }
   }
+
 
   void _clearOTPFields() {
     for (var controller in _digitControllers) {
@@ -218,7 +238,7 @@ class _OTPverifyState extends State<OTPverify> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-                child: CircularProgressIndicator()); // Show loading while waiting
+                child: LoadingScreen());
           }
           else if (snapshot.hasError) {
             return const Center(child: Text('SNAPSHOT HAS ERROR!'));
@@ -239,16 +259,23 @@ class _OTPverifyState extends State<OTPverify> {
                     color: const Color(0xffbf592b),
                     child: Column(
                       children: [
-                        Row(
+                        Row(      // BACK arrow
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Padding(
                               padding: const EdgeInsets.only(left: 5.0),
                               child: GestureDetector(
                                 onTap: () {
-                                  Navigator.push(
+                                  if (widget.isResetPssw) {
+                                    Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => const EmailVerify()));
+                                  }
+                                  else {
+                                    Navigator.push(
                                       context,
                                       MaterialPageRoute(builder: (context) => const SignUpHome()));
+                                  }
                                 },
                                 child: const Image(
                                   image: AssetImage('assets/images/white_left_arrow.png'),
@@ -271,13 +298,8 @@ class _OTPverifyState extends State<OTPverify> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              'Account',
-                              style: TextStyle(
-                                  fontFamily: 'Poppins ExtraBold',
-                                  fontSize: 24,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900
-                              ),
+                              ' Account',
+                              style: titleStyle
                             ),
                             SizedBox(width: 20,),
                             RotationTransition(
@@ -297,12 +319,7 @@ class _OTPverifyState extends State<OTPverify> {
                           children: [
                             Text(
                               'Verification',
-                              style: TextStyle(
-                                  fontFamily: 'Poppins ExtraBold',
-                                  fontSize: 24,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800
-                              ),
+                              style: titleStyle
                             ),
                           ],
                         ),
@@ -313,10 +330,7 @@ class _OTPverifyState extends State<OTPverify> {
                           children: [
                             Text(
                               'Check your email inbox.\nThen, please enter the 4-digit code\nsent to your email.',
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: Colors.white,
-                              ),
+                              style: inputLabelStyle
                             )
                           ],
                         ),
@@ -326,10 +340,10 @@ class _OTPverifyState extends State<OTPverify> {
                           key: _timerKey,  // Use the key here to force rebuild on resending the code
                           enableDescriptions: false,
                           format: CountDownTimerFormat.minutesSeconds,
-                          timeTextStyle: const TextStyle(
+                          timeTextStyle: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white
+                              color: Colors.yellow[700]
                           ),
                           colonsTextStyle: const TextStyle(
                               color: Colors.white
@@ -345,7 +359,7 @@ class _OTPverifyState extends State<OTPverify> {
                                 if (kDebugMode) {
                                   print("Expiration notification in Timer");
                                 }
-                                _showValidationDialog(context, 'OTP is expired!\nPlease resend code.');
+                                showValidationDialog(context, 'WARNING!', ['OTP is expired!\nPlease resend code.']);
                                 setState(() {
                                   _createOTP = '';
                                   _otpExpiryTime = null;
@@ -434,9 +448,18 @@ class _OTPverifyState extends State<OTPverify> {
                             onPressed: () async {
                               if (await _verifyOTP()) {
                                 if (!context.mounted) return;
-                                Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const HomePage())); // go to OTP verification step
+                                if (widget.isResetPssw) {
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) =>
+                                          ResetPssw(email: widget.email)));
+                                }
+                                else {
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (
+                                          context) => const HomePage()));
+                                }
                               }
                             },
                             child: const Text(
@@ -452,17 +475,7 @@ class _OTPverifyState extends State<OTPverify> {
                     ),
                   ),
 
-                  if (_isLoading)
-                    Container(
-                        height: MediaQuery.sizeOf(context).height,
-                        color: Colors.black.withOpacity(0.5),
-                        child: const Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 5.0,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.lightBlueAccent),
-                            )
-                        )
-                    ),
+                  if (_isLoading) const LoadingScreen()
                 ],
               );
           }

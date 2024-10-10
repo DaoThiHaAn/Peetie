@@ -81,4 +81,24 @@ class SheetsAPI {
     return null; // If email not found
   }
 
+  static Future<bool> resetPsswForEmail(String email, String newPssw) async {
+    final headers = await _userSheet!.values.row(1);
+    final emailIndex = headers.indexOf(SheetsColumn.gmail);
+    final psswIndex = headers.indexOf(SheetsColumn.pssw);
+
+    if (emailIndex == -1 || psswIndex == -1) throw Exception('Email and Password columns not found!');
+
+    final allRows = await _userSheet!.values.allRows();
+    for (int i = 1; i <allRows.length; i++) {   // Find the selected email and its password
+      final row = allRows[i];
+      if (row[emailIndex] == email) { // Update the password in the corresponding row
+        await _userSheet!.values.insertValue(newPssw, row: i + 1, column: psswIndex + 1);
+        // `i + 1` because GSheets uses 1-based index for rows (beginning at index 1 in the GSheet API)
+        // `psswIndex + 1` for column index
+        return true;
+      }
+    }
+
+    return false;
+  }
 }

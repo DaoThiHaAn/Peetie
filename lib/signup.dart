@@ -1,10 +1,9 @@
 import 'package:Peetie/signin.dart';
-import 'package:flutter/material.dart';
+
+import 'general_func.dart';
 import 'googlesheets.dart';
-import 'package:animated_text_kit/animated_text_kit.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'inputbox.dart';
-import 'main.dart';
+import 'libraries.dart';
 import 'otp.dart';
 
 class SignUpHome extends StatefulWidget {
@@ -15,7 +14,6 @@ class SignUpHome extends StatefulWidget {
 }
 
 class _SignUpHomeState extends State<SignUpHome> {
-  bool _isTapped = false;
   bool _isLoading = false;
   late TextEditingController _nameController;
   late TextEditingController _mailController;
@@ -31,32 +29,6 @@ class _SignUpHomeState extends State<SignUpHome> {
     _nameController = TextEditingController();
     _mailController = TextEditingController();
     _psswController = TextEditingController();
-  }
-
-  void _showValidationDialog(BuildContext context, List<String> messages) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text(
-            "INVALID!",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: SingleChildScrollView(
-              child: Text(messages.join('\n\n'), textAlign: TextAlign.justify)),
-          contentPadding: const EdgeInsets.all(20.0),
-          actions: [
-            ElevatedButton(
-              onPressed: () {Navigator.of(context).pop();},  // Close the dialog
-              child: const Text(
-                "OK",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   Future<bool> _isEmailUnique(String email) async {     //Fetch existing emails from Google Sheet
@@ -114,7 +86,7 @@ class _SignUpHomeState extends State<SignUpHome> {
         _isLoading = false; // Hide loading indicator
       });
       if (!mounted) return false;
-      _showValidationDialog(context, mess);
+      showValidationDialog(context, 'INVALID!', mess);
       return false;
     }
 
@@ -239,9 +211,7 @@ class _SignUpHomeState extends State<SignUpHome> {
                                   color: Colors.white,
                                 ),
                               ),
-                              SizedBox(
-                                width: 30,
-                              ),
+                              SizedBox(width: 30,),
                               RotationTransition(
                                 turns: AlwaysStoppedAnimation(45 / 360),
                                 child: Image(
@@ -257,7 +227,7 @@ class _SignUpHomeState extends State<SignUpHome> {
                           const Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                              Text('Name', style: MyApp.customTextStyle),
+                              Text('Name', style: inputLabelStyle),
                             ],
                           ),
                           InputBox(
@@ -268,7 +238,7 @@ class _SignUpHomeState extends State<SignUpHome> {
 
                           const Row(
                             children: <Widget>[
-                              Text('Email', style: MyApp.customTextStyle),
+                              Text('Email', style: inputLabelStyle),
                             ],
                           ),
                           InputBox(
@@ -279,7 +249,7 @@ class _SignUpHomeState extends State<SignUpHome> {
 
                           const Row(
                             children: <Widget>[
-                              Text('Password', style: MyApp.customTextStyle),
+                              Text('Password', style: inputLabelStyle),
                             ],
                           ),
                           InputBox(
@@ -292,32 +262,22 @@ class _SignUpHomeState extends State<SignUpHome> {
                             width: 100,
                             height: 35,
                             child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                backgroundColor: const Color(0xffbf592b),
-                                side: const BorderSide(color: Colors.white, width: 2.0),
-                                padding: const EdgeInsets.symmetric(),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30.0),
-                                ),
-                              ),
+                              style: bottomButtonStyle,
                               onPressed: () async {
                                 if (await _checkInput()) {
                                   if (!context.mounted) return;
                                   Navigator.push(
                                       context,
-                                      MaterialPageRoute(builder: (context) => OTPverify(
+                                      MaterialPageRoute(builder: (context) => OTPverify( // go to OTP verification step
                                         email: _inputMail,
                                         password: _inputPssw,
                                         name: _inputName,
-                                      ))); // go to OTP verification step
-                                }
-                                },
+                                        isResetPssw: false,
+                                      )));
+                                }},
                               child: const Text(
                                 'Next',
-                                style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold),
+                                style: buttonLabelStyle
                               ),
                             ),
                           ),
@@ -333,21 +293,19 @@ class _SignUpHomeState extends State<SignUpHome> {
                               const SizedBox(width: 15),
                               GestureDetector(
                                 onTap: () {
-                                  _isTapped = true;
                                   Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                           builder: (context) => const SignInPage()));
                                 },
                                 child: MouseRegion(
-                                  cursor: SystemMouseCursors.click,
+                                  cursor: SystemMouseCursors.basic,
                                   child: Text(
                                     'Sign in',
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w800,
-                                      color:
-                                      _isTapped ? Colors.yellow[700] : Colors.white,
+                                      color: Colors.yellow[700],
                                     ),
                                   ),
                                 ),
@@ -360,16 +318,7 @@ class _SignUpHomeState extends State<SignUpHome> {
                   ],
                 ),
                 if (_isLoading)
-                  Container(
-                      height: MediaQuery.sizeOf(context).height,
-                      color: Colors.black.withOpacity(0.5),
-                      child: const Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 5.0,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.lightBlueAccent),
-                          )
-                      )
-                  )
+                 const LoadingScreen()
               ],
             ),
           ],
