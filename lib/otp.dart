@@ -277,10 +277,16 @@ class _OTPverifyState extends State<OTPverify> {
                                       MaterialPageRoute(builder: (context) => const SignUpHome()));
                                   }
                                 },
-                                child: const Image(
-                                  image: AssetImage('assets/images/white_left_arrow.png'),
-                                  filterQuality: FilterQuality.high,
-                                  width: 60,
+                                child: const MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: Image(
+                                      image: AssetImage('assets/images/white_left_arrow.png'),
+                                      filterQuality: FilterQuality.high,
+                                      width: 60,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),

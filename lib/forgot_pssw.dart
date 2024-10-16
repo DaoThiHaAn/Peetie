@@ -90,10 +90,13 @@ class _EmailVerifyState extends State<EmailVerify> {
                                           MaterialPageRoute(builder: (context) => const SignInPage())
                                       );
                                     },
-                                  child: const Image(
-                                    image: AssetImage('assets/images/white_left_arrow.png'),
-                                    filterQuality: FilterQuality.high,
-                                    width: 60,
+                                  child: const MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: Image(
+                                      image: AssetImage('assets/images/white_left_arrow.png'),
+                                      filterQuality: FilterQuality.high,
+                                      width: 60,
+                                    ),
                                   ),
                                 )
                             ),
@@ -310,10 +313,22 @@ class _ResetPasswState extends State<ResetPssw> {
                                         MaterialPageRoute(builder: (context) => const SignInPage())
                                     );
                                   },
-                                  child: const Image(
-                                    image: AssetImage('assets/images/white_left_arrow.png'),
-                                    filterQuality: FilterQuality.high,
-                                    width: 60,
+                                  child: const MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: MouseRegion(
+                                       cursor: SystemMouseCursors.click,
+                                      child: MouseRegion(
+                                        cursor: SystemMouseCursors.click,
+                                        child: MouseRegion(
+                                          cursor: SystemMouseCursors.click,
+                                          child: Image(
+                                            image: AssetImage('assets/images/white_left_arrow.png'),
+                                            filterQuality: FilterQuality.high,
+                                            width: 60,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 )
                             ),
